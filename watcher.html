@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>팀장님이 보고 있다</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: #08080a; color: #e9e9ee; overflow: hidden;
+    font-family: "Segoe UI", "Malgun Gothic", -apple-system, sans-serif;
+    display: flex; flex-direction: column; --bar: 0px;
+  }
+  #stage {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: calc(var(--bar) + 16px) 16px 0; transform-origin: 50% 45%;
+  }
+  #bossWrap {
+    width: min(300px, 64vw); border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.08), transparent 68%);
+  }
+  #boss { width: 100%; display: block; overflow: visible; transform-origin: 50% 85%; }
+  .steam { fill: none; stroke: #9a9aa3; stroke-width: 2; stroke-linecap: round; transform-box: fill-box; animation: steam 2.4s ease-out infinite; }
+  .steam.s2 { animation-delay: 1.2s; }
+  @keyframes steam { 0% { transform: translateY(0); opacity: .7; } 100% { transform: translateY(-8px); opacity: 0; } }
+  #coffee, #watchArm, #fistG, #anger, #shout { transition: opacity .4s; }
+
+  #line {
+    position: relative; margin: 2px 0 0; min-height: 1.5em; font-size: clamp(16px, 4.2vw, 20px);
+    text-align: center; transition: opacity .3s, border-color .4s; font-weight: 600;
+    background: #141418; border: 1px solid #2a2a30; border-radius: 14px; padding: 8px 18px; max-width: 90vw;
+  }
+  #line::before {
+    content: ""; position: absolute; top: -7px; left: 50%; width: 12px; height: 12px;
+    background: inherit; border-left: 1px solid; border-top: 1px solid; border-color: inherit;
+    transform: translateX(-50%) rotate(45deg);
+  }
+  .meta { color: #7c7c86; font-size: 14px; min-height: 1.2em; text-align: center; }
+  #time {
+    font-size: clamp(48px, 12vw, 96px); font-weight: 200; line-height: 1;
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  }
+  #time small { font-size: .4em; opacity: .55; }
+  #over { color: #ff2a2a; font-weight: 700; min-height: 1.3em; font-variant-numeric: tabular-nums; letter-spacing: .05em; }
+  .progress { width: min(440px, 84vw); height: 4px; background: #222228; border-radius: 2px; overflow: hidden; }
+  #prog { height: 100%; width: 0; }
+
+  #controls { position: relative; z-index: 6; padding: 16px 16px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .panel { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: flex-end; }
+  .hidden { display: none !important; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #7c7c86; }
+  input {
+    background: #16161a; border: 1px solid #2a2a30; color: #e9e9ee; border-radius: 10px;
+    padding: 10px 12px; font-size: 15px; font-family: inherit; width: 200px;
+  }
+  input[type=number] { width: 110px; }
+  button {
+    font-family: inherit; font-size: 15px; font-weight: 600; border-radius: 999px; padding: 12px 22px;
+    border: 1px solid #2f2f36; background: #1a1a1f; color: #e9e9ee; cursor: pointer;
+  }
+  button.primary { background: #e9e9ee; color: #0b0b0d; border-color: #e9e9ee; }
+  button.ghost { background: transparent; }
+  button:active { transform: scale(.97); }
+  #resultText { width: 100%; text-align: center; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+  .red { color: #ff4a3d; } .green { color: #3ddc84; }
+  .hint { font-size: 12px; color: #55555e; }
+  #sound { position: fixed; top: 12px; right: 12px; z-index: 7; padding: 8px 14px; font-size: 12px; font-weight: 500; }
+
+  #tint { position: fixed; inset: 0; background: #b00000; opacity: 0; pointer-events: none; z-index: 3; }
+  #vignette {
+    position: fixed; inset: 0; pointer-events: none; z-index: 4; opacity: .3;
+    background: radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(0,0,0,.95) 100%);
+  }
+  .bar { position: fixed; left: 0; right: 0; height: var(--bar); background: #000; z-index: 5; }
+  .bar.top { top: 0; } .bar.bottom { bottom: 0; }
+
+  #stamp {
+    position: fixed; top: 45%; left: 50%; z-index: 8; pointer-events: none;
+    font-size: clamp(48px, 14vw, 96px); font-weight: 900; letter-spacing: .1em;
+    padding: 6px 28px; border: 8px solid currentColor; border-radius: 12px;
+    opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(2.6);
+  }
+  #stamp.fail { color: #ff2a2a; } #stamp.pass { color: #3ddc84; }
+  #stamp.show { animation: stamp .28s cubic-bezier(.2, .9, .3, 1.2) forwards; }
+  #stamp.hide { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(1); transition: opacity .8s; }
+  @keyframes stamp {
+    from { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(2.6); }
+    to   { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+  }
+  .shake { animation: shake .45s; }
+  .jolt { animation: jolt .22s; }
+  @keyframes shake {
+    0%, 100% { transform: translate(0, 0); }
+    15% { transform: translate(-10px, 5px); } 30% { transform: translate(9px, -6px); }
+    45% { transform: translate(-7px, -3px); } 60% { transform: translate(6px, 4px); }
+    75% { transform: translate(-3px, 2px); }
+  }
+  @keyframes jolt {
+    0%, 100% { transform: translate(0, 0); }
+    30% { transform: translate(0, 7px); } 60% { transform: translate(-3px, -2px); }
+  }
+</style>
+</head>
+<body>
+<div id="tint"></div>
+<div id="vignette"></div>
+<div class="bar top"></div>
+<div class="bar bottom"></div>
+<button id="sound">소리 켜짐</button>
+
+<main id="stage">
+  <div id="bossWrap">
+    <svg id="boss" viewBox="0 0 200 175" aria-label="지켜보는 팀장">
+      <g id="bodyG">
+        <path d="M46 175 Q50 114 100 108 Q150 114 154 175Z" fill="#4a4a50"/>
+        <rect class="skin" x="92" y="94" width="16" height="16"/>
+        <path d="M88 108 L100 132 L112 108Z" fill="#F1EFE8"/>
+        <path d="M97 112 L103 112 L105 142 L100 148 L95 142Z" fill="#A32D2D"/>
+      </g>
+      <g id="headG">
+        <circle class="skin" cx="68" cy="70" r="6"/>
+        <circle class="skin" cx="132" cy="70" r="6"/>
+        <circle class="skin" cx="100" cy="68" r="32"/>
+        <path d="M69 62 Q70 34 100 34 Q130 34 131 62 Q122 46 100 47 Q78 46 69 62Z" fill="#3a3a3e"/>
+        <g id="eyeL"><ellipse cx="88" cy="68" rx="5" ry="4" fill="#fff"/><circle id="pL" cx="88" cy="68" r="2.4" fill="#1a1a1a"/></g>
+        <g id="eyeR"><ellipse cx="112" cy="68" rx="5" ry="4" fill="#fff"/><circle id="pR" cx="112" cy="68" r="2.4" fill="#1a1a1a"/></g>
+        <rect x="80" y="62" width="16" height="12" rx="3" fill="none" stroke="#1f1f22" stroke-width="2"/>
+        <rect x="104" y="62" width="16" height="12" rx="3" fill="none" stroke="#1f1f22" stroke-width="2"/>
+        <line x1="96" y1="67" x2="104" y2="67" stroke="#1f1f22" stroke-width="2"/>
+        <line id="browL" x1="81" y1="55" x2="95" y2="55" stroke="#2C2C2A" stroke-width="3.5" stroke-linecap="round"/>
+        <line id="browR" x1="105" y1="55" x2="119" y2="55" stroke="#2C2C2A" stroke-width="3.5" stroke-linecap="round"/>
+        <path id="mouth" d="M92 88 Q100 93 108 88" stroke="#4A1B0C" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <ellipse id="mouthO" cx="100" cy="90" rx="8" ry="5" fill="#501313" opacity="0"/>
+        <g id="shout" stroke="#ff5a4a" stroke-width="2.5" stroke-linecap="round" opacity="0">
+          <path d="M116 97 L126 103"/><path d="M84 97 L74 103"/><path d="M100 104 L100 112"/>
+        </g>
+        <g id="anger" stroke="#ff3b30" stroke-width="3.5" stroke-linecap="round" opacity="0">
+          <path d="M134 38 L144 34"/><path d="M137 30 L139 42"/><path d="M146 44 L150 36"/>
+        </g>
+      </g>
+      <rect x="0" y="150" width="200" height="25" fill="#5c3b10"/>
+      <rect x="0" y="150" width="200" height="2" fill="#7a5218"/>
+      <g id="coffee">
+        <path class="steam" d="M151 128 Q148 123 151 119 Q154 115 151 110"/>
+        <path class="steam s2" d="M157 128 Q154 123 157 119 Q160 115 157 110"/>
+        <rect x="146" y="132" width="16" height="18" rx="2" fill="#F1EFE8"/>
+        <path d="M162 137 Q169 141 162 145" stroke="#F1EFE8" stroke-width="2.5" fill="none"/>
+      </g>
+      <g id="watchArm" opacity="0">
+        <circle class="skin" cx="154" cy="138" r="9"/>
+        <rect x="146" y="134" width="16" height="7" rx="2" fill="#2C2C2A"/>
+        <circle cx="154" cy="137.5" r="2" fill="#EF9F27"/>
+      </g>
+      <g id="fistG" opacity="0">
+        <g id="impact" stroke="#EF9F27" stroke-width="3" stroke-linecap="round" opacity="0">
+          <path d="M136 141 L127 133"/><path d="M168 141 L177 133"/><path d="M152 129 L152 118"/>
+        </g>
+        <circle id="fist" class="skin" cx="152" cy="146" r="11"/>
+      </g>
+    </svg>
+  </div>
+  <p id="line"></p>
+  <div id="task" class="meta"></div>
+  <div id="time">00:00<small>.00</small></div>
+  <div id="over"></div>
+  <div class="progress"><div id="prog"></div></div>
+</main>
+
+<div id="controls">
+  <div id="setup" class="panel">
+    <label>할 일 <input id="taskIn" placeholder="예: 보고서 마무리" maxlength="40"></label>
+    <label>목표 시간(분) <input id="minIn" type="number" value="10" min="0.5" step="0.5"></label>
+    <button id="startBtn" class="primary">시작</button>
+  </div>
+  <div id="runCtl" class="panel hidden">
+    <button id="pauseBtn">일시정지</button>
+    <button id="doneBtn" class="primary">끝냈어요</button>
+    <button id="resetBtn" class="ghost">초기화</button>
+  </div>
+  <div id="result" class="panel hidden">
+    <div id="resultText"></div>
+    <button id="againBtn" class="primary">다시 하기</button>
+  </div>
+  <div class="hint">Space 일시정지/계속 · Enter 끝냈어요</div>
+</div>
+
+<div id="stamp"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mix = (a, b, t) => { const A = hex(a), B = hex(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; };
+const pad = n => String(n).padStart(2, '0');
+function fmt(ms) {
+  const s = Math.floor(ms / 1000), h = Math.floor(s / 3600);
+  return (h ? h + ':' : '') + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60);
+}
+
+// 팀장 대사
+const LINES = {
+  ready:  ['준비되면 시작해. 내가 보고 있을 테니까.'],
+  calm:   ['천천히 해~ 아직 시간 있어.', '음, 잘하고 있네.', '딴짓하는 거 아니지?', '커피 한 잔 하면서 볼게.', '보고 있다~'],
+  sus:    ['그거 아직이야?', '벌써 절반 지났다?', '...좀 느린 것 같은데.', '시간 보고 있지?', '집중 좀 하자.'],
+  angry:  ['지금 몇 시인지 알아?', '얼마 안 남았어!', '뭐 하는 거야, 지금?', '끝낼 수 있긴 한 거지?', '빨리빨리!'],
+  final:  ['...'],
+  over:   ['내 자리로 와!!', '시간 지났잖아!', '변명은 듣기 싫어!', '아직도야?!', '이게 몇 번째야!', '당장 끝내!'],
+  paused: ['왜 멈춰?', '누가 쉬래?', '손 놓고 뭐 해?'],
+};
+
+// 상태
+let phase = 'ready';           // ready | running | paused | done
+let elapsed = 0, runStart = 0, target = 600000;
+let overtimeFired = false, overStart = 0, curStage = '', lastLineAt = 0, lastSec = -1;
+let vt = 0;                    // 화면에 쓰는 부드러운 긴장도 (0~1)
+let look = { x: 0, y: 0 }, mouse = null;
+let blinkStart = -1, nextBlink = performance.now() + 2500;
+let beat = 0, pulse = 0, prev = performance.now(), hiddenAt = 0;
+let shoutUntil = 0, lastSlamCycle = -1, doneAt = 0;
+let soundOn = true, ac = null, stampTimer = null;
+
+const getElapsed = () => phase === 'running' ? elapsed + performance.now() - runStart : elapsed;
+
+function stageOf(el) {
+  if (phase === 'ready' || phase === 'done' || phase === 'paused') return phase;
+  const p = el / target;
+  if (p >= 1) return 'over';
+  if (target - el <= 10000) return 'final';
+  if (p >= .8) return 'angry';
+  if (p >= .5) return 'sus';
+  return 'calm';
+}
+
+// 말풍선
+const lineEl = $('line');
+function say(text) {
+  lastLineAt = performance.now();
+  if (curStage === 'over') shoutUntil = lastLineAt + 1600;
+  lineEl.style.opacity = 0;
+  setTimeout(() => { lineEl.textContent = text; lineEl.style.opacity = 1; }, 250);
+}
+function pick(arr) {
+  const pool = arr.filter(s => s !== lineEl.textContent);
+  const src = pool.length ? pool : arr;
+  return src[Math.floor(Math.random() * src.length)];
+}
+function updateLine(stage, now) {
+  if (stage !== curStage) {
+    curStage = stage;
+    if (LINES[stage]) say(pick(LINES[stage]));
+  } else if (LINES[stage] && LINES[stage].length > 1 && now - lastLineAt > (stage === 'over' ? 6000 : 12000)) {
+    say(pick(LINES[stage]));
+  }
+}
+
+// 소리 (Web Audio로 직접 합성)
+function audio() {
+  if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (ac.state === 'suspended') ac.resume();
+}
+function tone({ type = 'sine', f0, f1, vol, dur, at = 0 }) {
+  if (!soundOn || !ac) return;
+  const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur * .7);
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + .01);
+  g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + dur + .02);
+}
+const heartSound = v => { tone({ f0: 70, f1: 40, vol: v, dur: .18 }); tone({ f0: 65, f1: 38, vol: v * .6, dur: .18, at: .17 }); };
+const tickSound = () => tone({ type: 'square', f0: 2000, vol: .04, dur: .03 });
+const boom = () => { tone({ f0: 120, f1: 32, vol: .9, dur: 1.1 }); tone({ type: 'sawtooth', f0: 80, f1: 30, vol: .25, dur: .6 }); };
+const slamSound = () => { tone({ f0: 95, f1: 38, vol: .8, dur: .35 }); tone({ type: 'square', f0: 160, f1: 60, vol: .12, dur: .12 }); };
+const chime = () => { tone({ f0: 660, vol: .15, dur: .35 }); tone({ f0: 880, vol: .15, dur: .5, at: .15 }); };
+
+// 도장, 화면 흔들림
+const stampEl = $('stamp'), stageEl = $('stage');
+function shakeStage(cls) {
+  stageEl.classList.remove('shake', 'jolt'); void stageEl.offsetWidth; stageEl.classList.add(cls);
+}
+function stamp(text, kind, stay) {
+  stampEl.textContent = text;
+  stampEl.className = ''; void stampEl.offsetWidth;
+  stampEl.className = 'show ' + kind;
+  shakeStage('shake');
+  clearTimeout(stampTimer);
+  if (!stay) stampTimer = setTimeout(() => stampEl.className = 'hide ' + kind, 1800);
+}
+stageEl.addEventListener('animationend', e => { if (e.target === stageEl) stageEl.classList.remove('shake', 'jolt'); });
+
+// 화면 전환
+function showPanel(id) {
+  ['setup', 'runCtl', 'result'].forEach(p => $(p).classList.toggle('hidden', p !== id));
+}
+
+function start() {
+  audio();
+  const min = parseFloat($('minIn').value);
+  target = Math.max(.1, isFinite(min) ? min : 10) * 60000;
+  const task = $('taskIn').value.trim();
+  $('task').textContent = (task ? '할 일: ' + task + '  ·  ' : '') + '목표 ' + fmt(target);
+  elapsed = 0; overtimeFired = false; lastSec = -1; lastSlamCycle = -1;
+  runStart = performance.now(); phase = 'running';
+  $('pauseBtn').textContent = '일시정지';
+  showPanel('runCtl');
+}
+function togglePause() {
+  if (phase === 'running') { elapsed = getElapsed(); phase = 'paused'; $('pauseBtn').textContent = '계속'; }
+  else if (phase === 'paused') { runStart = performance.now(); phase = 'running'; $('pauseBtn').textContent = '일시정지'; }
+}
+function finish() {
+  if (phase !== 'running' && phase !== 'paused') return;
+  elapsed = getElapsed(); phase = 'done'; curStage = 'done'; doneAt = performance.now();
+  const r = elapsed / target, late = r >= 1;
+  say(late ? '이번이 마지막이야. 알겠어?'
+    : r < .5 ? '...빠르네? 인정.'
+    : r < .8 ? '좋아. 이번엔 봐준다.'
+    : '아슬아슬했어. 다음엔 여유 있게 해.');
+  if (late) { stamp('실패', 'fail', true); boom(); } else { stamp('통과', 'pass', true); chime(); }
+  $('resultText').innerHTML = `기록 <b>${fmt(elapsed)}</b> / 목표 ${fmt(target)} ` +
+    (late ? `<span class="red">(+${fmt(elapsed - target)} 초과)</span>` : `<span class="green">(${fmt(target - elapsed)} 남김)</span>`);
+  showPanel('result');
+}
+function reset() {
+  phase = 'ready'; elapsed = 0; overtimeFired = false; curStage = ''; lastSec = -1;
+  clearTimeout(stampTimer); stampEl.className = '';
+  $('task').textContent = ''; $('over').textContent = '';
+  document.title = '팀장님이 보고 있다';
+  showPanel('setup');
+}
+
+$('startBtn').onclick = start;
+$('pauseBtn').onclick = togglePause;
+$('doneBtn').onclick = finish;
+$('resetBtn').onclick = reset;
+$('againBtn').onclick = reset;
+$('sound').onclick = () => { soundOn = !soundOn; $('sound').textContent = soundOn ? '소리 켜짐' : '소리 꺼짐'; if (soundOn) audio(); };
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') { if (e.key === 'Enter' && phase === 'ready') start(); return; }
+  if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+  else if (e.key === 'Enter') { e.preventDefault(); finish(); }
+});
+document.addEventListener('pointermove', e => mouse = { x: e.clientX, y: e.clientY });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) hiddenAt = performance.now();
+  else if (phase === 'running' && performance.now() - hiddenAt > 3000)
+    say(pick(['어디 갔다 왔어?', '자리 비웠지? 다 봤어.', '도망칠 생각 하지 마.']));
+});
+
+// 매 프레임 그리기
+const bossEl = $('boss'), bossWrap = $('bossWrap'), timeEl = $('time'), overEl = $('over'), progEl = $('prog');
+const skinEls = document.querySelectorAll('.skin');
+const headG = $('headG'), bodyG = $('bodyG');
+
+function frame(now) {
+  const dt = Math.min(100, now - prev); prev = now;
+  const el = getElapsed();
+  const p = el / target;
+  const late = phase !== 'ready' && p >= 1;
+  const stage = stageOf(el);
+  const success = phase === 'done' && !late;
+  const over = late;
+
+  // 긴장도: 진행률을 따라가되 부드럽게
+  const tt = phase === 'ready' ? 0 : phase === 'done' ? (late ? 1 : 0) : clamp(p);
+  vt += (tt - vt) * Math.min(1, dt / 400);
+
+  // 시간 초과 순간
+  if (phase === 'running' && late && !overtimeFired) {
+    overtimeFired = true; overStart = now; stamp('시간 초과', 'fail'); boom();
+  }
+
+  updateLine(stage, now);
+
+  // 시선: 마우스를 따라가다가, 시간 초과면 정면을 노려봄
+  let lt = { x: 0, y: .4 };
+  if (!over && phase !== 'done' && mouse) {
+    const r = bossEl.getBoundingClientRect();
+    lt = {
+      x: clamp((mouse.x - (r.left + r.width / 2)) / (innerWidth / 2), -1, 1),
+      y: clamp((mouse.y - (r.top + r.height * .4)) / (innerHeight / 2), -1, 1),
+    };
+  }
+  if (over) lt = { x: 0, y: 0 };
+  look.x += (lt.x - look.x) * .12;
+  look.y += (lt.y - look.y) * .12;
+  $('pL').setAttribute('cx', 88 + look.x * 2.5);  $('pL').setAttribute('cy', 68 + look.y * 1.5);
+  $('pR').setAttribute('cx', 112 + look.x * 2.5); $('pR').setAttribute('cy', 68 + look.y * 1.5);
+
+  // 깜빡임 (화날수록 덜 깜빡이고 노려봄), 시간 초과면 눈을 부릅뜸
+  if (!over && now > nextBlink) {
+    blinkStart = now;
+    nextBlink = now + (vt > .8 ? 8000 + Math.random() * 4000 : 2500 + Math.random() * 3500);
+  }
+  const bd = now - blinkStart;
+  const b = bd < 90 ? bd / 90 : bd < 220 ? 1 - (bd - 90) / 130 : 0;
+  const k = success ? Math.max(.15, .35 * (1 - b)) : (over ? 1.25 : 1 - .35 * clamp((vt - .6) / .4)) * (1 - b);
+  const eyeT = `translate(0 ${68 * (1 - k)}) scale(1 ${Math.max(.05, k)})`;
+  $('eyeL').setAttribute('transform', eyeT);
+  $('eyeR').setAttribute('transform', eyeT);
+
+  // 얼굴색: 점점 붉어짐
+  const skin = over ? '#E9807A' : mix('#F5C4B3', '#F0997B', clamp((vt - .4) / .6));
+  skinEls.forEach(e => e.setAttribute('fill', skin));
+
+  // 눈썹
+  const ang = success ? -8 : over ? 28 : phase === 'paused' ? Math.max(14, 22 * vt) : 24 * vt;
+  const by = 55 - (ang > 10 ? 2 : 0) + (success ? -2 : 0);
+  $('browL').setAttribute('transform', `translate(0 ${by - 55}) rotate(${ang} 88 55)`);
+  $('browR').setAttribute('transform', `translate(0 ${by - 55}) rotate(${-ang} 112 55)`);
+
+  // 입: 웃음 → 일자 → 찡그림 → 고함
+  const shouting = (over && phase === 'running' && now < shoutUntil) || (phase === 'done' && late && now - doneAt < 1600);
+  const mouthOpen = shouting || (phase === 'done' && late);
+  $('mouthO').setAttribute('opacity', mouthOpen ? 1 : 0);
+  $('mouth').setAttribute('opacity', mouthOpen ? 0 : 1);
+  $('mouthO').setAttribute('ry', shouting ? 3.5 + 3 * Math.abs(Math.sin(now / 70)) : 4);
+  let cy, ey;
+  if (success) { cy = 97; ey = 87; }
+  else if (over) { cy = 83; ey = 91; }
+  else if (phase === 'paused') { cy = 88; ey = 89; }
+  else { cy = 93 - 10 * vt; ey = 88 + 2.5 * vt; }
+  $('mouth').setAttribute('d', `M92 ${ey} Q100 ${cy} 108 ${ey}`);
+  $('shout').setAttribute('opacity', shouting ? (Math.floor(now / 120) % 2 ? 1 : .4) : 0);
+
+  // 심장박동
+  const bpm = phase === 'running' ? (over ? 150 : 60 + 80 * vt) : 55;
+  beat += dt * bpm / 60000;
+  if (beat >= 1) {
+    beat -= 1; pulse = 1;
+    if (phase === 'running' && vt >= .5) heartSound(.3 + .5 * vt);
+  }
+  pulse = Math.max(0, pulse - dt / 250);
+
+  // 화난 표시
+  const angerOn = over || vt > .7;
+  const angerS = 1 + pulse * .3;
+  $('anger').setAttribute('opacity', angerOn ? clamp(over ? 1 : (vt - .7) / .15) : 0);
+  $('anger').setAttribute('transform', `translate(${140 * (1 - angerS)} ${38 * (1 - angerS)}) scale(${angerS})`);
+
+  // 소품: 커피 → 손목시계 톡톡 → 책상 쾅
+  const showCoffee = phase === 'ready' || stage === 'calm' || success;
+  const showWatch = !showCoffee && !over && phase !== 'done';
+  const showFist = over;
+  $('coffee').style.opacity = showCoffee ? 1 : 0;
+  $('watchArm').style.opacity = showWatch ? 1 : 0;
+  $('fistG').style.opacity = showFist ? 1 : 0;
+  if (showWatch) {
+    const speed = phase === 'paused' ? 260 : vt > .8 ? 110 : 200;
+    $('watchArm').setAttribute('transform', `translate(0 ${-Math.abs(Math.sin(now / speed)) * 6})`);
+  }
+
+  // 시간 초과: 1.6초마다 주먹을 들었다가 책상을 내려침
+  let fistY = 0, impactOn = false;
+  if (over && phase === 'running') {
+    const t = (now - overStart) % 1600, cycle = Math.floor((now - overStart) / 1600);
+    if (t < 1200) fistY = -18 * (t / 1200);
+    else if (t < 1290) fistY = -18 * (1 - (t - 1200) / 90);
+    else { fistY = 0; impactOn = t < 1550; }
+    if (t >= 1290 && cycle !== lastSlamCycle) {
+      lastSlamCycle = cycle;
+      slamSound(); shakeStage('jolt'); shoutUntil = Math.max(shoutUntil, now + 700);
+    }
+  }
+  $('fist').setAttribute('transform', `translate(0 ${fistY})`);
+  $('impact').setAttribute('opacity', impactOn ? 1 : 0);
+
+  // 머리: 숨쉬기, 마우스 쪽으로 고개, 화나면 부들부들, 통과하면 끄덕끄덕
+  const breathe = Math.sin(now / 900) * 1;
+  const tremble = (over || vt > .85) && phase !== 'done' ? (over ? 1.2 : .6) : 0;
+  const jx = (Math.random() - .5) * 2 * tremble, jy = (Math.random() - .5) * 2 * tremble;
+  const nod = success && now - doneAt < 1500 ? Math.sin((now - doneAt) / 120) * 2.5 : 0;
+  const lean = over ? 4 : 3 * vt;
+  headG.setAttribute('transform', `translate(${look.x * 2 + jx} ${breathe + nod + lean + jy}) rotate(${look.x * 4} 100 96)`);
+  bodyG.setAttribute('transform', `translate(0 ${breathe * .4})`);
+
+  // 카메라: 천천히 다가가는 줌 + 박동, 팀장이 점점 다가옴
+  const zoom = 1 + .08 * vt + (over ? .03 : 0) + pulse * .015 * vt;
+  if (!stageEl.classList.contains('shake') && !stageEl.classList.contains('jolt')) stageEl.style.transform = `scale(${zoom})`;
+  const bossScale = 1 + (over ? .14 : vt * .08) + (stage === 'final' ? .04 : 0) + pulse * .025 * vt;
+  bossEl.style.transform = `scale(${bossScale})`;
+  bossWrap.style.background = `radial-gradient(circle at 50% 50%, ${over ? 'rgba(255,40,40,.16)' : `rgba(255,${Math.round(255 - 150 * vt)},${Math.round(255 - 200 * vt)},${.08 + .06 * vt})`}, transparent 68%)`;
+
+  // 영화 비율 검은 띠, 비네팅, 붉은 조명
+  const barH = over ? .16 : Math.max(0, (vt - .3) / .7) * .12;
+  document.body.style.setProperty('--bar', (barH * innerHeight).toFixed(1) + 'px');
+  $('vignette').style.opacity = .25 + .65 * (over ? 1 : vt);
+  $('tint').style.opacity = over && phase === 'running'
+    ? .08 + .2 * Math.max(0, Math.sin(now / 250))
+    : over ? .12 : Math.max(0, vt - .5) * .25;
+
+  // 시간 표시 + 떨림
+  const cs = Math.floor(el / 10) % 100;
+  timeEl.innerHTML = fmt(el) + '<small>.' + pad(cs) + '</small>';
+  timeEl.style.color = over ? '#ff2a2a' : mix('#e9e9ee', '#ff7a6a', clamp((vt - .5) / .5));
+  const amp = phase === 'running' ? (over ? 4 : clamp((vt - .8) / .2) * 3) : 0;
+  timeEl.style.transform = amp
+    ? `translate(${(Math.random() - .5) * amp * 2}px, ${(Math.random() - .5) * amp * 2}px) scale(${1 + pulse * .04 * vt})`
+    : 'none';
+  overEl.textContent = late ? '+' + fmt(el - target) + ' 초과' : '';
+  lineEl.style.color = over ? '#ff4a3d' : mix('#e9e9ee', '#ff8a7a', clamp((vt - .6) / .4));
+  lineEl.style.borderColor = over ? '#ff2a2a' : success ? '#3ddc84' : mix('#2a2a30', '#8a2a2a', clamp((vt - .5) / .5));
+
+  // 진행 막대
+  progEl.style.width = (phase === 'ready' ? 0 : clamp(p) * 100) + '%';
+  progEl.style.background = mix('#6b7280', '#ff2a2a', clamp(p));
+
+  // 초 단위 처리: 째깍 소리, 탭 제목
+  const sec = Math.floor(el / 1000);
+  if (sec !== lastSec) {
+    lastSec = sec;
+    const rem = target - el;
+    if (phase === 'running' && rem <= 30000 && rem > 0) tickSound();
+    if (phase !== 'ready') document.title = fmt(el) + ' · ' + (late ? '시간 초과' : phase === 'done' ? '완료' : '팀장님이 보는 중');
+  }
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
